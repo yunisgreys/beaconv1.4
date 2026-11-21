@@ -1,0 +1,7 @@
+.git
+.gitattributes
+.gitignore
+config/config.php
+config/supabase.php
+setup_check.php
+*.zip

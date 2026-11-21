@@ -10,25 +10,78 @@
  * is used instead (kept only for local testing).
  */
 
+/** Reads an environment variable (empty values count as missing). */
+function env_value(string ...$names): ?string {
+    foreach ($names as $name) {
+        $v = getenv($name);
+        if ($v === false || $v === '') $v = $_ENV[$name] ?? $_SERVER[$name] ?? null;
+        if (is_string($v) && trim($v) !== '') return trim($v);
+    }
+    return null;
+}
+
+/**
+ * App settings from config/config.php.
+ *
+ * On a host like Render the file isn't there (it stays off GitHub), so the
+ * settings come from environment variables instead:
+ *   BEACON_ENCRYPTION_KEY  (required)  base64 32-byte key, same as on your PC
+ *   BEACON_HTTPS           1 = secure cookies (default 1 when the file is missing)
+ *   BEACON_SCHOOL_NAME, BEACON_SCHOOL_YEAR, BEACON_TAGLINE  (optional)
+ * BEACON_ENCRYPTION_KEY also overrides the key in config.php when it is set.
+ */
 function config(?string $key = null) {
     static $cfg;
     if ($cfg === null) {
         $file = __DIR__ . '/../config/config.php';
-        if (!is_file($file)) {
-            http_response_code(500);
-            exit('BEACON is not configured yet: copy config/config.example.php to config/config.php.');
+        if (is_file($file)) {
+            $cfg = require $file;
+        } else {
+            if (env_value('BEACON_ENCRYPTION_KEY', 'DATABASE_URL', 'SUPABASE_DB_URL') === null) {
+                http_response_code(500);
+                exit('BEACON is not configured yet: copy config/config.example.php to config/config.php '
+                   . '(or set the BEACON_ENCRYPTION_KEY and DATABASE_URL environment variables on your host).');
+            }
+            $cfg = [
+                'app_name'       => 'BEACON',
+                'timezone'       => env_value('BEACON_TIMEZONE') ?? 'Asia/Manila',
+                'school_name'    => env_value('BEACON_SCHOOL_NAME') ?? 'Christ Life Academy',
+                'school_year'    => env_value('BEACON_SCHOOL_YEAR') ?? '2026-2027',
+                'system_tagline' => env_value('BEACON_TAGLINE') ?? 'Student Welfare & Care System',
+                'https'          => (env_value('BEACON_HTTPS') ?? '1') !== '0',
+                'db'             => [],
+                'encryption_key' => '',
+                'session'        => ['idle_timeout' => 30 * 60, 'absolute_timeout' => 8 * 60 * 60],
+                'login_throttle' => ['window_minutes' => 15, 'max_per_email' => 3, 'max_per_ip' => 20],
+            ];
         }
-        $cfg = require $file;
+        $envKey = env_value('BEACON_ENCRYPTION_KEY');
+        if ($envKey !== null) $cfg['encryption_key'] = $envKey;
     }
     return $key === null ? $cfg : ($cfg[$key] ?? null);
 }
 
-/** Settings from config/supabase.php, or null when that file doesn't exist. */
+/**
+ * Settings from config/supabase.php. When that file doesn't exist but the
+ * DATABASE_URL (or SUPABASE_DB_URL) environment variable is set, defaults
+ * built from it are used. Null when neither is available.
+ */
 function supabase_config(?string $key = null) {
     static $cfg = false;
     if ($cfg === false) {
         $file = __DIR__ . '/../config/supabase.php';
-        $cfg = is_file($file) ? require $file : null;
+        if (is_file($file)) {
+            $cfg = require $file;
+        } elseif (($url = env_value('DATABASE_URL', 'SUPABASE_DB_URL')) !== null) {
+            $cfg = [
+                'database_url'    => $url,
+                'sslmode'         => 'require',
+                'connect_timeout' => 10,
+                'timezone'        => env_value('BEACON_TIMEZONE') ?? 'Asia/Manila',
+            ];
+        } else {
+            $cfg = null;
+        }
     }
     if ($cfg === null) return null;
     return $key === null ? $cfg : ($cfg[$key] ?? null);

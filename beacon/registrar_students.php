@@ -51,8 +51,8 @@ $counts = db_one("SELECT SUM(CASE WHEN status = 'enrolled' THEN 1 ELSE 0 END) AS
 function student_form(array $v, array $sectionMap, string $p): void { ?>
     <div class="form-grid">
         <div class="form-section-label">Student</div>
-        <div class="field"><label for="<?= $p ?>_no">Student ID</label><input id="<?= $p ?>_no" name="student_no" class="mono" maxlength="20" placeholder="SV-2026-0001" value="<?= e($v['student_no'] ?? '') ?>" required></div>
-        <div class="field"><label for="<?= $p ?>_lrn">LRN <span class="muted" style="font-weight: 500;">(12 digits, optional)</span></label><input id="<?= $p ?>_lrn" name="lrn" class="mono" inputmode="numeric" maxlength="12" value="<?= e($v['lrn'] ?? '') ?>"></div>
+        <div class="field"><label for="<?= $p ?>_no">Student ID</label><input id="<?= $p ?>_no" name="student_no" class="mono" maxlength="20" placeholder="CLA-2026-0001" value="<?= e($v['student_no'] ?? '') ?>" required></div>
+        <div class="field"><label for="<?= $p ?>_lrn">LRN <span class="muted" style="font-weight: 500;"></span></label><input id="<?= $p ?>_lrn" name="lrn" class="mono" inputmode="numeric" maxlength="12" value="<?= e($v['lrn'] ?? '') ?>"></div>
         <div class="field"><label for="<?= $p ?>_first">First name</label><input id="<?= $p ?>_first" name="first_name" maxlength="80" value="<?= e($v['first_name'] ?? '') ?>" required></div>
         <div class="field"><label for="<?= $p ?>_middle">Middle name <span class="muted" style="font-weight: 500;">(optional)</span></label><input id="<?= $p ?>_middle" name="middle_name" maxlength="80" value="<?= e($v['middle_name'] ?? '') ?>"></div>
         <div class="field"><label for="<?= $p ?>_last">Last name</label><input id="<?= $p ?>_last" name="last_name" maxlength="80" value="<?= e($v['last_name'] ?? '') ?>" required></div>
