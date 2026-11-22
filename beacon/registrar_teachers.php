@@ -66,7 +66,7 @@ layout_start($user, 'reg_teachers', 'School Staff', 'Register teachers, clinic, 
 
 <div class="stat-grid-4">
     <a class="stat-card-box" href="registrar_teachers.php?sstatus=pending#staff"><div class="stat-icon-wrap ic-violet"><?= icon('bell') ?></div><div class="stat-info"><span class="stat-lbl">Waiting for an account</span><div class="stat-val"><?= (int)$regCounts['pending'] ?></div><span class="stat-note <?= $regCounts['pending'] ? 'note-amber' : '' ?>"><?= $regCounts['pending'] ? 'sent to the Super Admin' : 'nobody waiting' ?></span></div></a>
-    <div class="stat-card-box"><div class="stat-icon-wrap ic-blue"><?= icon('users') ?></div><div class="stat-info"><span class="stat-lbl">Active teachers</span>
+    <div class="stat-card-box"><div class="stat-icon-wrap ic-blue"><?= icon('users') ?></div><div class="stat-info"><span class="stat-lbl">Active teachers</span><div class="stat-val"><?= $teacherN ?></div><span class="stat-note">accounts created by the Super Admin</span></div></div>
     <div class="stat-card-box"><div class="stat-icon-wrap ic-green"><?= icon('grid') ?></div><div class="stat-info"><span class="stat-lbl">Class advisers</span><div class="stat-val"><?= $advisers ?></div><span class="stat-note"><?= e(current_school_year()) ?></span></div></div>
     <a class="stat-card-box" href="registrar_sections.php"><div class="stat-icon-wrap ic-amber"><?= icon('clipboard') ?></div><div class="stat-info"><span class="stat-lbl">Sections without an adviser</span><div class="stat-val"><?= $noAdviser ?></div><span class="stat-note <?= $noAdviser ? 'note-amber' : '' ?>"><?= $noAdviser ? 'Assign an adviser' : 'All covered' ?></span></div></a>
 </div>
