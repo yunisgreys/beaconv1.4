@@ -38,9 +38,9 @@ layout_start($user, 'parents', 'Parent registrations', 'Review family accounts a
 
 <div class="stat-grid-4">
     <a class="stat-card-box" href="?show=pending"><div class="stat-icon-wrap ic-amber"><?= icon('clipboard') ?></div><div class="stat-info"><span class="stat-lbl">Waiting for review</span><div class="stat-val"><?= (int)$counts['pending'] ?></div></div></a>
-    <a class="stat-card-box" href="?show=approved"><div class="stat-icon-wrap ic-green"><?= icon('shield') ?></div><div class="stat-info"><span class="stat-lbl">Approved links</span><div class="stat-val"><?= (int)$counts['approved'] ?></div></div></a>
-    <a class="stat-card-box" href="?show=closed"><div class="stat-icon-wrap ic-red"><?= icon('bell') ?></div><div class="stat-info"><span class="stat-lbl">Rejected / revoked</span><div class="stat-val"><?= (int)$counts['closed'] ?></div></div></a>
-    <a class="stat-card-box" href="#accounts"><div class="stat-icon-wrap ic-violet"><?= icon('users') ?></div><div class="stat-info"><span class="stat-lbl">Family accounts</span><div class="stat-val"><?= count($accounts) ?></div></div></a>
+    <a class="stat-card-box" href="?show=approved"><div class="stat-icon-wrap ic-green"><?= icon('shield') ?></div><div class="stat-info"><span class="stat-lbl">Approved Links</span><div class="stat-val"><?= (int)$counts['approved'] ?></div></div></a>
+    <a class="stat-card-box" href="?show=closed"><div class="stat-icon-wrap ic-red"><?= icon('bell') ?></div><div class="stat-info"><span class="stat-lbl">Rejected / Revoked</span><div class="stat-val"><?= (int)$counts['closed'] ?></div></div></a>
+    <a class="stat-card-box" href="#accounts"><div class="stat-icon-wrap ic-violet"><?= icon('users') ?></div><div class="stat-info"><span class="stat-lbl">Family Accounts</span><div class="stat-val"><?= count($accounts) ?></div></div></a>
 </div>
 
 <div class="card">
@@ -53,7 +53,7 @@ layout_start($user, 'parents', 'Parent registrations', 'Review family accounts a
         <?php endforeach; ?>
     </div>
 
-    <?php if (!$links): ?><div class="empty"><?= $show === 'pending' ? 'No requests waiting. 🎉' : 'Nothing here.' ?></div><?php endif; ?>
+    <?php if (!$links): ?><div class="empty"><?= $show === 'pending' ? 'No requests waiting.' : 'Nothing here.' ?></div><?php endif; ?>
     <?php foreach ($links as $l): $lid = (int)$l['id']; $m = guardian_match($l); ?>
         <div class="link-row">
             <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px; flex: 1;">
@@ -64,10 +64,10 @@ layout_start($user, 'parents', 'Parent registrations', 'Review family accounts a
                     <div class="muted" style="font-size: 0.72rem;">Registered <?= e(date('M j, Y g:i A', strtotime($l['registered_at']))) ?><?= $l['account_status'] === 'disabled' ? ' · <strong style="color:#b91c1c">account disabled</strong>' : '' ?></div>
                 </div>
                 <div>
-                    <span class="section-label" style="margin: 0 0 4px;">Student requested</span>
+                    <span class="section-label" style="margin: 0 0 4px;">Student Requested</span>
                     <strong><?= e($l['s_first'] . ' ' . $l['s_last']) ?></strong>
                     <div class="muted" style="font-size: 0.78rem;"><span class="mono"><?= e($l['student_no']) ?></span> · G<?= e($l['grade_level']) ?> <?= e($l['section_name']) ?></div>
-                    <div style="font-size: 0.72rem; color: #15803d; font-weight: 600;">✓ Student ID + birthdate verified</div>
+                    <div style="font-size: 0.72rem; color: #15803d; font-weight: 600;">✓ Student ID + Birthdate verified</div>
                 </div>
                 <div>
                     <span class="section-label" style="margin: 0 0 4px;">Guardian on file</span>
@@ -86,7 +86,7 @@ layout_start($user, 'parents', 'Parent registrations', 'Review family accounts a
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="approve"><input type="hidden" name="link_id" value="<?= $lid ?>"><button class="btn btn-primary btn-sm" type="submit">Approve</button></form>
                     <?php endif; ?>
                     <?php if ($l['status'] === 'pending'): ?><button type="button" class="btn btn-danger-soft btn-sm" data-open="reject-<?= $lid ?>">Reject</button><?php endif; ?>
-                    <?php if ($l['status'] === 'approved'): ?><button type="button" class="btn btn-danger-soft btn-sm" data-open="revoke-<?= $lid ?>">Revoke access</button><?php endif; ?>
+                    <?php if ($l['status'] === 'approved'): ?><button type="button" class="btn btn-danger-soft btn-sm" data-open="revoke-<?= $lid ?>">Revoke Access</button><?php endif; ?>
                 </div>
             </div>
         </div>
@@ -113,10 +113,10 @@ layout_start($user, 'parents', 'Parent registrations', 'Review family accounts a
 </div>
 
 <div class="card" id="accounts">
-    <div class="card-head-flex"><div><div class="card-title">Family accounts</div><div class="card-sub">Disable an account to block sign-in completely (e.g. a duplicate or suspicious registration).</div></div></div>
+    <div class="card-head-flex"><div><div class="card-title">Family Accounts</div><div class="card-sub">Disable an account to block sign-in completely.</div></div></div>
     <?php if (!$accounts): ?><div class="empty">No family accounts yet.</div><?php else: ?>
     <table class="table">
-        <thead><tr><th>Parent</th><th>Children</th><th>Status</th><th>Registered</th><th>Last sign-in</th><th></th></tr></thead>
+        <thead><tr><th>Parent</th><th>Children</th><th>Status</th><th>Registered</th><th>Last Sign-in</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($accounts as $a): ?>
             <tr style="<?= $a['status'] === 'disabled' ? 'opacity: .55;' : '' ?>">
