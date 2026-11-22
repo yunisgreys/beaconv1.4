@@ -435,10 +435,39 @@ a.pager-btn:hover { border-color: #c7d2fe; background: #eef2ff; color: var(--btn
 .form-section-label { grid-column: 1 / -1; font-size: 0.7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #64748b; margin: 6px 0 -4px; }
 .btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; box-shadow: none; }
 
+/* v1.4 · Guidance: note sits under the "Involves mental health" checkbox */
+.mh-field .check { align-items: center; font-weight: 600; }
+.mh-field .check input { margin-top: 0; }
+.mh-hint { padding-left: 24px; margin-top: 4px; }
 
-/* ================================================================
-   v1.4 · Responsive layout (phones, tablets, laptops, big monitors)
-   ================================================================ */
+/* v1.4 · Clinic */
+.deliver-form { margin: 6px 0 0; }
+.pass-found { margin-top: 10px; display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; font-size: 0.84rem; line-height: 1.5; }
+.pass-found .ico { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; }
+.pass-found strong { color: #0f172a; }
+.pass-found .mono { font-weight: 800; letter-spacing: .06em; }
+.pass-found.pass-none { background: #f8fafc; border-color: var(--border); color: var(--text-muted); }
+.pass-found-meta { font-size: 0.76rem; color: #475569; margin-top: 2px; }
+
+/* v1.4 · Parent: child still waiting for approval */
+.chip-pending { cursor: default; display: inline-flex; align-items: center; gap: 8px; background: #fffbeb; border-color: #fde68a; color: #78350f; }
+.chip-pending:hover { box-shadow: none; border-color: #fde68a; }
+.chip-status { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 999px; }
+
+/* v1.4 · Registrar */
+.form-help-note { margin: 12px 0 0; font-size: 0.72rem; line-height: 1.5; color: #1d4ed8; }
+.locked-value { padding: 10px 13px; border: 1px dashed var(--border); border-radius: 10px; background: #f8fafc; font-size: 0.875rem; color: var(--text-main); }
+
+/* v1.4 · Super Admin: staff waiting for an account */
+.btn-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #fff; color: var(--btn); font-size: 0.7rem; font-weight: 800; }
+.pending-staff-list { display: grid; gap: 10px; }
+.pending-staff { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); }
+.pending-staff-main { min-width: 0; }
+.pending-staff-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--text-main); }
+.pending-staff-meta { font-size: 0.76rem; color: var(--text-muted); margin-top: 3px; overflow-wrap: anywhere; }
+.pending-staff form { margin: 0; flex-shrink: 0; }
+@media (max-width: 560px) { .pending-staff { flex-direction: column; align-items: stretch; } .pending-staff form .btn { width: 100%; } }
+
 img, svg, video, canvas { max-width: 100%; }
 .stat-card-box, .field { max-width: 100%; }
 html, body, .system-analytics, .shell, .shell2 { height: 100dvh; }

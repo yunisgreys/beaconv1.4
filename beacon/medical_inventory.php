@@ -15,6 +15,16 @@ if (is_post()) {
         }
         flash('error', $err); $reopen = 'modalAddItem';
     }
+        if ($action === 'receive_item') {
+        $id = (int)post('item_id');
+        $err = inventory_receive_request($user, $id);
+        if (!$err) {
+            $it = db_one('SELECT * FROM inventory_items WHERE id = ?', [$id]);
+            flash('success', 'Delivery recorded: ' . $it['name'] . ' now has ' . (int)$it['quantity'] . ' ' . $it['unit'] . ' (' . STOCK_STATUS[stock_status($it)][0] . ').');
+            redirect('medical_inventory.php');
+        }
+        flash('error', $err);
+    }
     if ($action === 'update_item') {
         $id = (int)post('item_id');
         $err = inventory_update_item($user, $id, $_POST);
@@ -78,6 +88,11 @@ layout_start($user, 'inventory', 'Medical inventory', 'Track stock levels, log n
                     <?php if ($i['requested_qty']): ?>
                         <strong><?= (int)$i['requested_qty'] ?> <?= e($i['unit']) ?></strong>
                         <div class="muted" style="font-size: 0.72rem;"><?= e($i['request_note'] ?: 'Requested') ?><?= $i['requested_at'] ? ' · ' . e(date('M j', strtotime($i['requested_at']))) : '' ?></div>
+                        <form method="post" action="medical_inventory.php" class="deliver-form" data-confirm-title="Record this delivery?" data-confirm-ok="Add to stock" data-confirm="Add the <?= (int)$i['requested_qty'] ?> <?= e($i['unit']) ?> that arrived to stock? The status will update automatically.">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="receive_item"><input type="hidden" name="item_id" value="<?= (int)$i['id'] ?>">
+                            <button type="submit" class="btn btn-soft btn-sm">Mark delivered</button>
+                        </form>
                     <?php else: ?><span class="muted">—</span><?php endif; ?>
                 </td>
                 <td style="text-align: right;"><button type="button" class="btn btn-soft btn-sm" data-open="item-<?= (int)$i['id'] ?>">Edit</button></td>
@@ -165,7 +180,8 @@ layout_start($user, 'inventory', 'Medical inventory', 'Track stock levels, log n
                 <div class="field"><label>Quantity requested</label><input type="number" name="requested_qty" min="1" value="<?= e($ef['requested_qty'] ?? '') ?>" placeholder="None"></div>
                 <div class="field"><label>Request note</label><input name="request_note" maxlength="255" value="<?= e($ef['request_note'] ?? '') ?>"></div>
                 <?php if ($i['requested_qty']): ?>
-                    <div class="field span-2"><label class="check"><input type="checkbox" name="mark_received" value="1"> The <?= (int)$i['requested_qty'] ?> <?= e($i['unit']) ?> requested have arrived — add them to stock</label></div>
+                                        <div class="field span-2"><label class="check"><input type="checkbox" name="mark_received" value="1"> The <?= (int)$i['requested_qty'] ?> <?= e($i['unit']) ?> requested have arrived — add them to stock</label>
+                        <span class="hint" style="padding-left: 24px;"></span></div>
                 <?php endif; ?>
 
                 <span class="section-label" style="grid-column: 1 / -1; margin: 6px 0 0;">Details</span>

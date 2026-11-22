@@ -82,7 +82,31 @@ $stockOpts = ['' => 'Not from clinic stock'];
 foreach ($items as $i) if ((int)$i['quantity'] > 0) $stockOpts[$i['id']] = $i['name'] . ' (' . (int)$i['quantity'] . ' ' . $i['unit'] . ' left)';
 $statusOpts = array_map(fn($s) => $s[0], CLINIC_STATUS);
 
+// v1.4: clinic passes teachers issued in the last 12 hours, newest per student, so
+// picking a student shows their pass right away (active ones fill in the code).
+$passesByStudent = [];
+foreach (db_all("SELECT p.id, p.pass_code, p.student_id, p.reason_type, p.reason, p.urgency, p.status, p.issued_at, p.expires_at,
+                        u.first_name, u.last_name
+                   FROM clinic_passes p JOIN users u ON u.id = p.issued_by
+                  WHERE p.status IN ('issued', 'expired') AND p.issued_at >= ?
+                  ORDER BY (p.status = 'issued') DESC, p.issued_at DESC", [date('Y-m-d H:i:s', time() - 12 * 3600)]) as $p) {
+    $sid = (int)$p['student_id'];
+    if (isset($passesByStudent[$sid])) continue;
+    $passesByStudent[$sid] = [
+        'code'    => $p['pass_code'],
+        'active'  => $p['status'] === 'issued',
+        'reason'  => (PASS_REASONS[$p['reason_type']] ?? 'Clinic visit') . ($p['reason'] ? ' — ' . $p['reason'] : ''),
+        'psych'   => $p['reason_type'] === 'psychological',
+        'urgency' => PASS_URGENCY[$p['urgency']] ?? '',
+        'by'      => $p['first_name'] . ' ' . $p['last_name'],
+        'issued'  => date('g:i A', strtotime($p['issued_at'])),
+        'expires' => date('g:i A', strtotime($p['expires_at'])),
+        'complaint' => (string)$p['reason'],
+    ];
+}
+
 $alerts = [];
+
 foreach (db_all('SELECT student_id, allergies, conditions FROM medical_profiles') as $m) {
     $alerts[$m['student_id']] = trim(($m['allergies'] ? 'Allergy: ' . $m['allergies'] : '') . ($m['allergies'] && $m['conditions'] ? ' · ' : '') . ($m['conditions'] ? $m['conditions'] : ''));
 }
@@ -117,7 +141,8 @@ layout_start($user, 'intake', 'Patient intake', "Check students in and out, reco
             <div class="field col-2">
                 <label for="ci_student">Student</label>
                 <?= student_picker('ci_student', $students, $form['student_id'], false) ?>
-                <span class="hint alert-hint" id="allergyHint"></span>
+            <span class="hint alert-hint" id="allergyHint"></span>
+                <div class="pass-found" id="passFound" hidden aria-live="polite"></div>
             </div>
             <?php if (!$form['pass_id']): ?>
             <div class="field col-2">
@@ -322,7 +347,45 @@ layout_start($user, 'intake', 'Patient intake', "Check students in and out, reco
     var alerts = <?= json_encode((object)$alerts) ?>;
     var sel = document.getElementById('ci_student'), hint = document.getElementById('allergyHint');
     function show() { hint.textContent = alerts[sel.value] ? 'Medical alert: ' + alerts[sel.value] : ''; }
-    if (sel) { sel.addEventListener('change', show); show(); }
+        if (sel) { sel.addEventListener('change', show); show(); }
+
+    // v1.4: show the clinic pass issued to the chosen student and fill in its code
+    var passes = <?= json_encode((object)$passesByStudent) ?>;
+    var box = document.getElementById('passFound'), code = document.getElementById('ci_code');
+    var complaint = document.getElementById('ci_complaint'), sensitive = document.querySelector('input[name="is_sensitive"]');
+    var autoCode = '', autoComplaint = '';
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text) n.textContent = text; return n; }
+    function showPass() {
+        if (!sel || !box || !code) return;          // code box is hidden when the page was opened from a pass
+        var p = passes[sel.value];
+        box.textContent = '';
+        if (code.value === autoCode) code.value = '';
+        if (complaint && complaint.value === autoComplaint) complaint.value = '';
+        autoCode = autoComplaint = '';
+        if (!sel.value) { box.hidden = true; return; }
+        box.hidden = false;
+        if (!p) {
+            box.className = 'pass-found pass-none';
+            box.appendChild(el('span', '', 'No clinic pass was issued to this student today. Check them in as a walk-in.'));
+            return;
+        }
+        box.className = 'pass-found' + (p.active ? '' : ' pass-none');
+        box.insertAdjacentHTML('afterbegin', '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/></svg>');
+        var body = el('div');
+        var line = el('div');
+        line.appendChild(el('strong', '', p.active ? 'Clinic pass ' : 'Expired pass '));
+        line.appendChild(el('span', 'mono', p.code));
+        line.appendChild(document.createTextNode(' · ' + p.reason + (p.urgency ? ' · ' + p.urgency : '')));
+        body.appendChild(line);
+        body.appendChild(el('div', 'pass-found-meta', 'Issued by ' + p.by + ' at ' + p.issued + (p.active ? ' · valid until ' + p.expires + ' · code filled in below' : ' · it expired at ' + p.expires + ', so check them in without it')));
+        box.appendChild(body);
+        if (p.active) {
+            if (code.value === '') { code.value = p.code; autoCode = p.code; }
+            if (complaint && complaint.value === '' && p.complaint) { complaint.value = p.complaint; autoComplaint = p.complaint; }
+            if (sensitive && p.psych) sensitive.checked = true;
+        }
+    }
+    if (sel) { sel.addEventListener('change', showPass); showPass(); }
 
     document.querySelectorAll('[data-now]').forEach(function (b) {
         b.addEventListener('click', function () {

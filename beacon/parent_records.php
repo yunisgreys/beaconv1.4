@@ -5,9 +5,42 @@ $user = require_page('parent_records');
 
 $children = parent_children($user);
 $child = selected_child($children);
+// v1.4: children whose link is still being checked are listed by name only, with a
+// "Waiting for approval" label. None of their records are loaded until approved.
+$pending = array_values(array_filter(parent_other_links($user), fn($l) => $l['status'] === 'pending'));
+
+/** The child selector: approved children are links, pending ones are labelled and not clickable. */
+function records_child_chips(array $children, array $pending, int $activeId): void {
+    if (count($children) + count($pending) < 2 && !$pending) return; ?>
+<div class="chip-row" style="margin-bottom: 18px;" aria-label="Your children">
+    <?php foreach ($children as $c): ?>
+        <a class="chip<?= (int)$c['id'] === $activeId ? ' active' : '' ?>" style="text-decoration: none;" href="?child=<?= (int)$c['id'] ?>"><?= e($c['first_name'] . ' ' . $c['last_name']) ?></a>
+    <?php endforeach; ?>
+    <?php foreach ($pending as $p): ?>
+        <span class="chip chip-pending" aria-disabled="true" title="The school is still checking this link. Records appear once it is approved.">
+            <?= e($p['first_name'] . ' ' . $p['last_name']) ?> <span class="chip-status">Waiting for approval</span>
+        </span>
+    <?php endforeach; ?>
+</div>
+<?php }
+
 if (!$child) {
-    flash('error', "Your child's records appear once the school verifies your link.");
-    redirect('parent_welfare_feed.php');
+    if (!$pending) {
+        flash('error', "Your child's records appear once the school verifies your link.");
+        redirect('parent_welfare_feed.php');
+    }
+    layout_start($user, 'records', 'School records', 'Waiting for the school to approve your link');
+    records_child_chips([], $pending, 0); ?>
+    <div class="card">
+        <div class="notice notice-info"><?= icon('shield') ?>
+            <span><strong>Waiting for approval.</strong> The school is checking that you are the parent or guardian on file for
+            <?= e(implode(', ', array_map(fn($p) => $p['first_name'] . ' ' . $p['last_name'], $pending))) ?>.
+            To protect your child's privacy, their clinic, guidance and attendance records appear here only after the link is approved.</span></div>
+        <p class="muted" style="font-size: 0.84rem; margin-top: 14px;">Requested <?= e(date('M j, Y', strtotime($pending[0]['created_at']))) ?>. You can check the status any time in the Family notices page.</p>
+    </div>
+<?php
+    layout_end();
+    exit;
 }
 $sid = (int)$child['id'];
 
@@ -20,13 +53,7 @@ $plans    = array_sum(array_map(fn($c) => count(array_filter($c['interventions']
 layout_start($user, 'records', 'School records', $child['first_name'] . ' ' . $child['last_name'] . ' · Grade ' . $child['grade_level'] . ' – ' . $child['section_name']);
 ?>
 
-<?php if (count($children) > 1): ?>
-<div class="chip-row" style="margin-bottom: 18px;">
-    <?php foreach ($children as $c): ?>
-        <a class="chip<?= (int)$c['id'] === $sid ? ' active' : '' ?>" style="text-decoration: none;" href="?child=<?= (int)$c['id'] ?>"><?= e($c['first_name'] . ' ' . $c['last_name']) ?></a>
-    <?php endforeach; ?>
-</div>
-<?php endif; ?>
+<?php records_child_chips($children, $pending, $sid); ?>
 
 <div class="stat-grid-4">
     <a class="stat-card-box" href="#clinic"><div class="stat-icon-wrap ic-red"><?= icon('heart') ?></div><div class="stat-info"><span class="stat-lbl">Clinic visits</span><div class="stat-val"><?= count($clinic) ?></div><span class="stat-note">this school year</span></div></a>

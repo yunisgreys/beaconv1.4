@@ -20,6 +20,14 @@ if (is_post()) {
         }
         flash('error', $err); $reopen = 'modalCreate';
     }
+        if ($action === 'create_from_registry') {
+        [$newId, $temp, $reg, $err] = admin_create_from_registry($user, (int)post('registry_id'));
+        if (!$err) {
+            $_SESSION['new_credentials'] = ['name' => $reg['first_name'] . ' ' . $reg['last_name'], 'email' => normalize_email($reg['email']), 'password' => $temp, 'kind' => 'created'];
+            redirect('admin_staff.php');
+        }
+        flash('error', $err); $reopen = 'modalPendingStaff';
+    }
     if ($action === 'credentials') {
         $err = admin_update_credentials($user, $id, $_POST);
         if (!$err) { flash('success', 'Sign-in e-mail updated. They use the new e-mail the next time they sign in.'); redirect($back); }
@@ -64,6 +72,7 @@ $counts = array_count_values(array_column(array_filter($all, fn($s) => $s['statu
 $lockedN = count(array_filter($all, fn($s) => is_locked($s)));
 $requests = password_change_requests_list();
 $pendingReq = count(array_filter($requests, fn($r) => $r['status'] === 'pending'));
+$pendingStaff = pending_staff_registrations();   // v1.4: staff the Registrar registered
 
 layout_start($user, 'staff', 'Staff accounts', 'Create staff logins and manage sign-in details. Names, job titles and sections are kept by the Registrar.');
 ?>
@@ -135,7 +144,7 @@ layout_start($user, 'staff', 'Staff accounts', 'Create staff logins and manage s
 <div class="card" id="staff">
     <div class="card-head-flex">
         <div><div class="card-title">Staff</div><div class="card-sub">You create Teacher, Guidance Office, Clinic and Registrar accounts. Parents register themselves.</div></div>
-        <button type="button" class="btn btn-primary btn-sm" data-open="modalCreate">+ Create staff account</button>
+        <button type="button" class="btn btn-primary btn-sm" data-open="modalPendingStaff">+ Create staff account<?php if ($pendingStaff): ?> <span class="btn-count"><?= count($pendingStaff) ?></span><?php endif; ?></button>
     </div>
     <form class="staff-filters" method="get" action="admin_staff.php">
         <?php if ($fRole): ?><input type="hidden" name="role" value="<?= e($fRole) ?>"><?php endif; ?>
@@ -191,6 +200,42 @@ layout_start($user, 'staff', 'Staff accounts', 'Create staff logins and manage s
     </div>
     <?= pager($pg, 'page', 'staff') ?>
     <?php endif; ?>
+</div>
+
+<<div id="modalPendingStaff" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="psTitle" aria-hidden="true" <?= $reopen === 'modalPendingStaff' ? 'data-autoopen' : '' ?>>
+    <div class="modal-card wide">
+        <div class="modal-head">
+            <div class="modal-icon ic-blue"><?= icon('users') ?></div>
+            <div><h3 id="psTitle">Create staff account</h3><p>Staff the Registrar registered and who are waiting for their BEACON account.</p></div>
+            <button type="button" class="modal-close" data-close aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+            <?php if (!$pendingStaff): ?>
+                <div class="empty">Nobody is waiting. When the Registrar registers new school staff, they appear here.</div>
+            <?php else: ?>
+            <div class="pending-staff-list">
+                <?php foreach ($pendingStaff as $p): ?>
+                <div class="pending-staff">
+                    <div class="pending-staff-main">
+                        <div class="pending-staff-name"><strong><?= e($p['first_name'] . ' ' . $p['last_name']) ?></strong> <?= role_pill($p['role_code'], STAFF_REGISTRY_ROLES[$p['role_code']] ?? $p['role_code']) ?></div>
+                        <div class="pending-staff-meta"><?= e($p['email']) ?><?= $p['title'] ? ' · ' . e($p['title']) : '' ?><?= $p['phone'] ? ' · ' . e($p['phone']) : '' ?><?= $p['employee_no'] ? ' · ' . e($p['employee_no']) : '' ?></div>
+                        <div class="pending-staff-meta">Registered <?= e(date('M j, Y', strtotime($p['created_at']))) ?><?= $p['by_first'] ? ' by ' . e($p['by_first'] . ' ' . $p['by_last']) : '' ?></div>
+                    </div>
+                    <form method="post" action="admin_staff.php" data-confirm-title="Create this account?" data-confirm-ok="Create account"
+                          data-confirm="A <?= e(STAFF_ROLES[$p['role_code']] ?? '') ?> account will be created for <?= e($p['first_name'] . ' ' . $p['last_name']) ?> (<?= e($p['email']) ?>) with a temporary password.">
+                        <?= csrf_field() ?><input type="hidden" name="action" value="create_from_registry"><input type="hidden" name="registry_id" value="<?= (int)$p['id'] ?>">
+                        <button type="submit" class="btn btn-primary btn-sm">Create account</button>
+                    </form>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <div class="modal-foot" style="align-items: center;">
+            <span class="muted" style="font-size: 0.78rem; margin-right: auto;">Someone not on the list?</span>
+            <button type="button" class="btn btn-soft" data-close data-open="modalCreate">Enter details manually</button>
+        </div>
+    </div>
 </div>
 
 <?php $cv = $reopen === 'modalCreate' ? $_POST : ['role' => 'teacher']; ?>

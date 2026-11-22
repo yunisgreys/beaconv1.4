@@ -54,12 +54,24 @@ auth_start('Create a family account', true);
     <div class="auth-row">
         <div class="auth-field">
             <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="new-password" required minlength="10">
+            <div class="pw-wrap">
+                <input id="password" name="password" type="password" autocomplete="new-password" required minlength="10">
+                <button type="button" class="pw-toggle" data-toggle-password="password" aria-label="Show password" aria-pressed="false" title="Show password">
+                    <svg class="pw-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="pw-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+                </button>
+            </div>
             <span class="hint">At least 10 characters, with letters and numbers.</span>
         </div>
         <div class="auth-field">
             <label for="password_confirm">Confirm password</label>
-            <input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required>
+                        <div class="pw-wrap">
+                <input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required>
+                <button type="button" class="pw-toggle" data-toggle-password="password_confirm" aria-label="Show password" aria-pressed="false" title="Show password">
+                    <svg class="pw-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="pw-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -67,7 +79,7 @@ auth_start('Create a family account', true);
     <div class="auth-row">
         <div class="auth-field">
             <label for="student_no">Student ID</label>
-            <input id="student_no" name="student_no" required placeholder="SV-2026-0000" value="<?= e($old['student_no']) ?>">
+            <input id="student_no" name="student_no" required autocomplete="off" value="<?= e($old['student_no']) ?>">
             <span class="hint">Found on your child's school ID or report card.</span>
         </div>
         <div class="auth-field">

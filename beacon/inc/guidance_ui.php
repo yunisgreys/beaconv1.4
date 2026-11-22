@@ -52,8 +52,20 @@ function wellbeing_legend_card(bool $collapsible = false, bool $horizontal = fal
     </div>
 <?php }
 
+/**
+ * v1.4: counselor dropdown without a "Me" option. Lists active Guidance staff
+ * by name and pre-selects the signed-in counselor when they are on the list.
+ * Returns [options, selected id].
+ */
+function counselor_choices(): array {
+    $opts = [];
+    foreach (counselors() as $c) $opts[(int)$c['id']] = $c['first_name'] . ' ' . $c['last_name'];
+    $me = (int)(current_user()['id'] ?? 0);
+    return [$opts, isset($opts[$me]) ? $me : (array_key_first($opts) ?? '')];
+}
+
 function open_case_modal(array $students, array $prefill = [], bool $autoOpen = false, string $action = 'case_bip_manager.php'): void {
-    $counselorOpts = ['' => 'Me'] + array_column(array_map(fn($c) => ['id' => $c['id'], 'n' => $c['first_name'] . ' ' . $c['last_name']], counselors()), 'n', 'id');
+    [$counselorOpts, $counselorPick] = counselor_choices();
 ?>
 <div id="modalOpenCase" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="openCaseTitle" aria-hidden="true" <?= $autoOpen ? 'data-autoopen' : '' ?>>
     <form class="modal-card" method="post" action="<?= e($action) ?>">
@@ -86,10 +98,11 @@ function open_case_modal(array $students, array $prefill = [], bool $autoOpen = 
                 </div>
                 <div class="field">
                     <label for="oc_counselor">Assigned counselor</label>
-                    <select id="oc_counselor" name="counselor_id"><?= opts($counselorOpts, '') ?></select>
+                    <select id="oc_counselor" name="counselor_id"><?= opts($counselorOpts, $counselorPick) ?></select>
                 </div>
-                <div class="field" style="display: flex; align-items: flex-end;">
-                    <label class="check"><input type="checkbox" name="is_mental_health" value="1"> Involves mental health <span class="muted">(kept private from parents unless the student consents)</span></label>
+                <div class="field span-2 mh-field">
+                    <label class="check"><input type="checkbox" name="is_mental_health" value="1"> Involves mental health</label>
+                    <span class="hint mh-hint">Kept private from parents unless the student consents.</span>
                 </div>
                 <div class="field span-2">
                     <label for="oc_summary">Summary for families <span class="muted" style="font-weight: 500;">(optional)</span></label>
@@ -107,7 +120,7 @@ function open_case_modal(array $students, array $prefill = [], bool $autoOpen = 
 <?php }
 
 function schedule_session_modal(array $students, array $prefill = [], bool $autoOpen = false, string $action = 'guidance_desk.php'): void {
-    $counselorOpts = ['' => 'Me'] + array_column(array_map(fn($c) => ['id' => $c['id'], 'n' => $c['first_name'] . ' ' . $c['last_name']], counselors()), 'n', 'id');
+        [$counselorOpts, $counselorPick] = counselor_choices();
     $defaultStart = date('Y-m-d\TH:i', (int)(ceil((time() + 3600) / 1800) * 1800));
 ?>
 <div id="modalSession" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sessionTitle" aria-hidden="true" <?= $autoOpen ? 'data-autoopen' : '' ?>>
@@ -144,7 +157,7 @@ function schedule_session_modal(array $students, array $prefill = [], bool $auto
                 </div>
                 <div class="field">
                     <label for="ss_counselor">Counselor</label>
-                    <select id="ss_counselor" name="counselor_id"><?= opts($counselorOpts, '') ?></select>
+                    <select id="ss_counselor" name="counselor_id"><?= opts($counselorOpts, $counselorPick) ?></select>
                 </div>
                 <div class="field">
                     <label for="ss_location">Location <span class="muted" style="font-weight: 500;">(optional)</span></label>

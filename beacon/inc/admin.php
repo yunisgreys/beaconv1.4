@@ -103,9 +103,50 @@ function admin_create_staff(array $admin, array $in): array {
             VALUES ((SELECT id FROM roles WHERE code = ?), ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)',
         [$in['role'], normalize_email($in['email']), password_hash($temp, PASSWORD_DEFAULT), trim($in['first_name']), trim($in['last_name']),
          trim($in['title']), trim($in['phone']), 'active', $admin['id'], now(), now()]);
-    $id = (int)db()->lastInsertId();
+        $id = (int)db()->lastInsertId();
     audit('staff_create', 'users', $id, null, ['role', 'email', 'first_name', 'last_name', 'title', 'phone'], $admin);
+    staff_registry_mark_created(normalize_email($in['email']), $id, $admin);   // v1.4: keep the Registrar's list in sync
     return [$id, $temp, null];
+}
+
+/** v1.4: marks the Registrar's pending record for this e-mail as "Account created". */
+function staff_registry_mark_created(string $email, int $userId, array $admin): void {
+    foreach (db_all("SELECT id FROM staff_registry WHERE email = ? AND status = 'pending'", [$email]) as $r) {
+        db_run("UPDATE staff_registry SET status = 'created', user_id = ?, account_created_by = ?, account_created_at = ?, updated_at = ? WHERE id = ?",
+            [$userId, $admin['id'], now(), now(), $r['id']]);
+        audit('update', 'staff_registry', (int)$r['id'], null, ['status', 'user_id'], $admin);
+    }
+}
+
+/**
+ * v1.4: creates the sign-in account for someone the Registrar registered, using the
+ * details the Registrar recorded. Returns [user id, temporary password, registry row, error].
+ */
+function admin_create_from_registry(array $admin, int $registryId): array {
+    require_admin($admin);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $r = db_one('SELECT * FROM staff_registry WHERE id = ? FOR UPDATE', [$registryId]);
+        if (!$r)                         { $pdo->rollBack(); return [null, null, null, 'That registration was not found.']; }
+        if ($r['status'] !== 'pending')  { $pdo->rollBack(); return [null, null, null, $r['status'] === 'created' ? 'An account was already created for this person.' : 'The Registrar cancelled this registration.']; }
+        if (!isset(STAFF_ROLES[$r['role_code']])) { $pdo->rollBack(); return [null, null, null, 'That role cannot be given a staff account.']; }
+        $email = normalize_email($r['email']);
+        if (db_value('SELECT 1 FROM users WHERE email = ?', [$email])) { $pdo->rollBack(); return [null, null, null, 'Another account already uses ' . $email . '. Ask the Registrar to correct the e-mail.']; }
+        $title = $r['title'] ?: (STAFF_REGISTRY_ROLES[$r['role_code']] ?? STAFF_ROLES[$r['role_code']]);
+        $temp = temp_password();
+        db_run('INSERT INTO users (role_id, email, password_hash, first_name, last_name, title, phone, status, must_change_password, created_by, created_at, updated_at)
+                VALUES ((SELECT id FROM roles WHERE code = ?), ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)',
+            [$r['role_code'], $email, password_hash($temp, PASSWORD_DEFAULT), $r['first_name'], $r['last_name'], $title, $r['phone'], 'active', $admin['id'], now(), now()]);
+        $id = (int)$pdo->lastInsertId();
+        audit('staff_create', 'users', $id, null, array_values(array_filter(['role', 'email', 'first_name', 'last_name', 'title', $r['phone'] ? 'phone' : null])), $admin);
+        staff_registry_mark_created($email, $id, $admin);
+        $pdo->commit();
+        return [$id, $temp, $r, null];
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 }
 
 /**
@@ -239,6 +280,7 @@ const ACTIVITY_LABELS = [
     'students'             => ['create' => 'added a student record', 'update' => 'updated a student record'],
     'sections'             => ['create' => 'created a section', 'update' => 'updated a section'],
     'users'                => ['update' => 'updated teacher information'],
+    'staff_registry'       => ['create' => 'registered a staff member', 'update' => 'updated a staff registration'],
 ];
 
 const LOG_PER_PAGE = 10;

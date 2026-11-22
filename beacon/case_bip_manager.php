@@ -279,9 +279,10 @@ if ($caseId) {
                 <div class="field"><label for="ec_counselor">Counselor</label><select id="ec_counselor" name="counselor_id"><?= opts($counselorOpts, $form['counselor_id']) ?></select></div>
                 <div class="field span-2">
                     <?php if ($case['is_mental_health']): ?>
-                        <div class="notice notice-info"><?= icon('shield') ?><span>This case is marked as mental health and stays that way, so it can't become visible to parents by accident. Use “Parent visibility” to share it with the student's consent.</span></div>
+                        <div class="notice notice-info"><?= icon('shield') ?><span>Use “Parent visibility” to share it with the student's consent.</span></div>
                     <?php else: ?>
-                        <label class="check"><input type="checkbox" name="is_mental_health" value="1" <?= !empty($form['is_mental_health']) ? 'checked' : '' ?>> Involves mental health <span class="muted">(hides it from parents unless the student consents)</span></label>
+                                                <label class="check"><input type="checkbox" name="is_mental_health" value="1" <?= !empty($form['is_mental_health']) ? 'checked' : '' ?>> Involves mental health</label>
+                        <span class="hint mh-hint">Hides it from parents unless the student consents.</span>
                     <?php endif; ?>
                 </div>
                 <div class="field span-2"><label for="ec_summary">Summary for families</label><input id="ec_summary" name="parent_summary" maxlength="255" value="<?= e($form['parent_summary']) ?>"></div>

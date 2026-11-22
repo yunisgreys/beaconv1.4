@@ -21,15 +21,6 @@ if (is_post()) {
         if (!$err) { flash('success', 'Student information saved.'); redirect($back); }
         flash('error', $err); $reopen = 'stu-' . $sid;
     }
-    if ($action === 'assign') {
-        $target = (string)post('target_section', '');
-        [$moved, $err] = $target === ''
-            ? [0, 'Choose the section to move them to.']
-            : registrar_assign_students($user, (array)($_POST['ids'] ?? []), $target === 'none' ? null : (int)$target);
-        if ($err) { flash('error', $err); }
-        else { flash('success', $moved ? "$moved student" . ($moved === 1 ? '' : 's') . ' moved. Their advisers see the change right away.' : 'Those students were already in that section.'); }
-        redirect($back);
-    }
 }
 
 $fQ       = trim((string)query('q', ''));
@@ -41,7 +32,6 @@ $pg = paginate($total, REG_PER_PAGE);
 
 $sectionMap = section_choice_map();
 $sectionFilter = ['' => 'All sections', 'none' => 'No section yet'] + array_slice($sectionMap, 1, null, true);
-$moveOpts = ['' => 'Choose a section…'] + array_slice($sectionMap, 1, null, true) + ['none' => 'Remove from section'];
 $statusFilter = STUDENT_STATUSES + ['all' => 'All statuses'];
 $statusTone = ['enrolled' => 'green', 'transferred' => 'blue', 'graduated' => 'purple', 'inactive' => 'gray'];
 $counts = db_one("SELECT SUM(CASE WHEN status = 'enrolled' THEN 1 ELSE 0 END) AS enrolled,
@@ -59,7 +49,13 @@ function student_form(array $v, array $sectionMap, string $p): void { ?>
         <div class="field"><label for="<?= $p ?>_bd">Birthdate</label><input id="<?= $p ?>_bd" name="birthdate" type="date" max="<?= date('Y-m-d') ?>" value="<?= e($v['birthdate'] ?? '') ?>" required></div>
         <div class="field"><label for="<?= $p ?>_sex">Sex</label><select id="<?= $p ?>_sex" name="sex"><?= opts(['' => 'Choose…', 'F' => 'Female', 'M' => 'Male'], $v['sex'] ?? '') ?></select></div>
         <div class="field"><label for="<?= $p ?>_status">Status</label><select id="<?= $p ?>_status" name="status"><?= opts(STUDENT_STATUSES, $v['status'] ?? 'enrolled') ?></select></div>
+        <?php if (!empty($v['_locked_section'])): ?>
+        <div class="field span-2"><span class="field-label">Section</span>
+            <div class="locked-value"><?= e($v['_locked_section']) ?></div>
+            <span class="hint">The section can't be changed from this page.</span></div>
+        <?php else: ?>
         <div class="field span-2"><label for="<?= $p ?>_sec">Section</label><select id="<?= $p ?>_sec" name="section_id"><?= opts($sectionMap, $v['section_id'] ?? '') ?></select></div>
+        <?php endif; ?>
         <div class="field span-2"><label for="<?= $p ?>_addr">Address <span class="muted" style="font-weight: 500;">(optional)</span></label><input id="<?= $p ?>_addr" name="address" maxlength="255" value="<?= e($v['address'] ?? '') ?>"></div>
         <div class="form-section-label">Guardian on file</div>
         <div class="field"><label for="<?= $p ?>_gn">Guardian name</label><input id="<?= $p ?>_gn" name="guardian_name" maxlength="120" value="<?= e($v['guardian_name'] ?? '') ?>"></div>
@@ -68,7 +64,7 @@ function student_form(array $v, array $sectionMap, string $p): void { ?>
     </div>
 <?php }
 
-layout_start($user, 'reg_students', 'Students', 'Add students, update their information and put them in the right section.');
+layout_start($user, 'reg_students', 'Students', 'Add students and keep their information up to date.');
 ?>
 
 <div class="stat-grid-4">
@@ -84,36 +80,24 @@ layout_start($user, 'reg_students', 'Students', 'Add students, update their info
         <button type="button" class="btn btn-primary btn-sm" data-open="modalAddStudent">+ Add student</button>
     </div>
 
-    <form class="reg-filters" method="get" action="registrar_students.php">
+    <form class="reg-filters" method="get" action="registrar_students.php" data-auto-filter>
         <div class="field" style="flex: 1; min-width: 240px;"><label for="f_q">Search</label><input id="f_q" type="search" name="q" value="<?= e($fQ) ?>" placeholder="Name, student ID or LRN"></div>
         <div class="field"><label for="f_sec">Section</label><select id="f_sec" name="section"><?= opts($sectionFilter, $fSection) ?></select></div>
         <div class="field"><label for="f_status">Status</label><select id="f_status" name="status"><?= opts($statusFilter, $fStatus) ?></select></div>
-        <button class="btn btn-soft" type="submit">Filter</button>
         <?php if ($fQ !== '' || $fSection !== '' || $fStatus !== 'enrolled'): ?><a class="card-link" href="registrar_students.php" style="padding-bottom: 10px;">Clear</a><?php endif; ?>
     </form>
 
     <?php if (!$rows): ?>
         <div class="empty">No students match. Use <strong>+ Add student</strong> to create a record.</div>
     <?php else: ?>
-    <form method="post" action="<?= e($back) ?>" id="bulkForm" data-confirm="The selected students will move to the chosen section, and their advisers will change." data-confirm-title="Move students?" data-confirm-ok="Move">
-        <?= csrf_field() ?><input type="hidden" name="action" value="assign">
-        <div class="reg-bulk">
-            <strong><span id="selCount">0</span> selected</strong>
-            <label class="sr-only" for="target_section">Move to section</label>
-            <select id="target_section" name="target_section"><?= opts($moveOpts) ?></select>
-            <button class="btn btn-primary btn-sm" type="submit" id="moveBtn" disabled>Move to section</button>
-            <span class="muted" style="font-size: 0.76rem;">Tick students below, pick a section, then move them together.</span>
-        </div>
         <div style="overflow-x: auto;">
         <table class="table">
             <thead><tr>
-                <th class="reg-check"><input type="checkbox" id="checkAll" aria-label="Select all on this page"></th>
                 <th>Student</th><th>Grade &amp; section</th><th>Birthdate</th><th>Guardian on file</th><th>Status</th><th></th>
             </tr></thead>
             <tbody>
             <?php foreach ($rows as $r): $rid = (int)$r['id']; ?>
                 <tr>
-                    <td class="reg-check"><input type="checkbox" name="ids[]" value="<?= $rid ?>" aria-label="Select <?= e($r['first_name'] . ' ' . $r['last_name']) ?>"></td>
                     <td style="white-space: nowrap;"><strong><?= e($r['last_name'] . ', ' . $r['first_name']) ?></strong>
                         <div class="muted mono" style="font-size: 0.72rem;"><?= e($r['student_no']) ?><?= $r['lrn'] ? ' · LRN ' . e($r['lrn']) : '' ?></div></td>
                     <td style="white-space: nowrap;"><?= $r['grade_level'] ? 'Grade ' . e($r['grade_level']) . ' – ' . e($r['section_name']) : '<span class="badge badge-amber">No section yet</span>' ?></td>
@@ -124,9 +108,8 @@ layout_start($user, 'reg_students', 'Students', 'Add students, update their info
                 </tr>
             <?php endforeach; ?>
             </tbody>
-        </table>
-        </div>
-    </form>
+                </table>
+</div>
     <?= pager($pg, 'page', 'students') ?>
     <?php endif; ?>
 </div>
@@ -144,7 +127,8 @@ layout_start($user, 'reg_students', 'Students', 'Add students, update their info
     </form>
 </div>
 
-<?php foreach ($rows as $r): $rid = (int)$r['id']; $v = $reopen === "stu-$rid" ? $_POST : $r; ?>
+<?php foreach ($rows as $r): $rid = (int)$r['id']; $v = $reopen === "stu-$rid" ? $_POST : $r;
+    $v['_locked_section'] = $r['section_id'] ? 'Grade ' . $r['grade_level'] . ' – ' . $r['section_name'] : ''; ?>
 <div id="stu-<?= $rid ?>" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="et-<?= $rid ?>" aria-hidden="true" <?= $reopen === "stu-$rid" ? 'data-autoopen' : '' ?>>
     <form class="modal-card" method="post" action="<?= e($back) ?>" novalidate style="max-width: 640px;">
         <?= csrf_field() ?><input type="hidden" name="action" value="update"><input type="hidden" name="student_id" value="<?= $rid ?>">
@@ -158,25 +142,5 @@ layout_start($user, 'reg_students', 'Students', 'Add students, update their info
     </form>
 </div>
 <?php endforeach; ?>
-
-<script>
-(function () {
-    var form = document.getElementById('bulkForm');
-    if (!form) return;
-    var boxes = form.querySelectorAll('input[name="ids[]"]'), all = document.getElementById('checkAll'),
-        count = document.getElementById('selCount'), btn = document.getElementById('moveBtn'), target = document.getElementById('target_section');
-    function update() {
-        var n = form.querySelectorAll('input[name="ids[]"]:checked').length;
-        count.textContent = n;
-        btn.disabled = n === 0 || target.value === '';
-        all.checked = n > 0 && n === boxes.length;
-        all.indeterminate = n > 0 && n < boxes.length;
-    }
-    boxes.forEach(function (b) { b.addEventListener('change', update); });
-    target.addEventListener('change', update);
-    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); update(); });
-    update();
-})();
-</script>
 
 <?php layout_end(); ?>

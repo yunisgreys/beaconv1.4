@@ -468,7 +468,8 @@ function inventory_update_item(array $user, int $itemId, array $in): ?string {
 
     $qty = (int)$in['quantity'];
     $received = !empty($in['mark_received']) && $item['requested_qty'];
-    if ($received) { $qty += (int)$item['requested_qty']; $req = ''; }
+        // v1.4: a delivery puts the item back on automatic status, so it shows In stock again
+    if ($received) { $qty += (int)$item['requested_qty']; $req = ''; $override = ''; }
     $delta = $qty - (int)$item['quantity'];
     $reason = $received ? 'restock' : ($in['change_reason'] ?? '');
     if ($delta !== 0 && !isset(STOCK_REASONS[$reason])) return 'Please choose why the quantity changed.';
@@ -493,6 +494,27 @@ function inventory_update_item(array $user, int $itemId, array $in): ?string {
             db_run('INSERT INTO inventory_movements (item_id, change_qty, reason, performed_by, created_at) VALUES (?, ?, ?, ?, ?)', [$itemId, $delta, $reason, $user['id'], now()]);
         }
         audit('update', 'inventory_items', $itemId, null, $changed ?: ['quantity'], $user);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    return null;
+}
+
+function inventory_receive_request(array $user, int $itemId): ?string {
+    require_clinic($user, 'clinic.inventory.manage');
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $item = db_one('SELECT * FROM inventory_items WHERE id = ? FOR UPDATE', [$itemId]);
+        if (!$item)                   { $pdo->rollBack(); return 'Item not found.'; }
+        if (!$item['requested_qty'])  { $pdo->rollBack(); return 'There is no pending request for that item.'; }
+        $add = (int)$item['requested_qty'];
+        db_run('UPDATE inventory_items SET quantity = quantity + ?, requested_qty = NULL, request_note = NULL, requested_at = NULL, status_override = NULL, updated_at = ? WHERE id = ?',
+            [$add, now(), $itemId]);
+        db_run('INSERT INTO inventory_movements (item_id, change_qty, reason, performed_by, created_at) VALUES (?, ?, ?, ?, ?)', [$itemId, $add, 'restock', $user['id'], now()]);
+        audit('update', 'inventory_items', $itemId, null, ['quantity', 'requested_qty', 'status_override'], $user);
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();

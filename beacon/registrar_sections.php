@@ -13,7 +13,7 @@ if (is_post()) {
             $adv = (string)post('adviser_id', '');
             $err = registrar_set_adviser($user, $sid, $adv === '' ? null : (int)$adv);
         }
-        if (!$err) { flash('success', $id ? 'Section saved.' : 'Section created. You can now move students into it.'); redirect('registrar_sections.php#s-' . $sid); }
+               if (!$err) { flash('success', $id ? 'Section saved.' : 'Section created.'); redirect('registrar_sections.php#s-' . $sid); }
         flash('error', $err); $reopen = $id ? 'sec-' . $id : 'modalAddSection';
     }
 }
@@ -26,24 +26,29 @@ $unassigned = (int)db_value("SELECT COUNT(*) FROM students WHERE status = 'enrol
 
 function section_form(array $v, array $teachers, string $p): void { ?>
     <div class="form-grid">
-        <div class="field"><label for="<?= $p ?>_grade">Grade level</label><select id="<?= $p ?>_grade" name="grade_level"><?= opts(['' => 'Choose…'] + array_combine(range(1, 12), array_map(fn($g) => "Grade $g", range(1, 12))), $v['grade_level'] ?? '') ?></select></div>
+               <div class="field"><label for="<?= $p ?>_grade">Grade level</label><select id="<?= $p ?>_grade" name="grade_level" data-grade-select><?= opts(['' => 'Choose…'] + array_combine(range(1, 12), array_map(fn($g) => "Grade $g", range(1, 12))), $v['grade_level'] ?? '') ?></select></div>
+        <?php $isShs = in_array((int)($v['grade_level'] ?? 0), SHS_GRADES, true); ?>
+        <div class="field span-2" data-strand-field <?= $isShs ? '' : 'hidden' ?>>
+            <label for="<?= $p ?>_strand">Senior High School track and strand</label>
+            <select id="<?= $p ?>_strand" name="strand" <?= $isShs ? '' : 'disabled' ?>><?= shs_strand_options($isShs ? ($v['strand'] ?? '') : '') ?></select>
+        </div>
         <div class="field"><label for="<?= $p ?>_name">Section name</label><input id="<?= $p ?>_name" name="name" maxlength="60" placeholder="e.g. Mabini" value="<?= e($v['name'] ?? '') ?>" required></div>
         <div class="field"><label for="<?= $p ?>_year">School year</label><input id="<?= $p ?>_year" name="school_year" maxlength="9" placeholder="2026-2027" value="<?= e($v['school_year'] ?? current_school_year()) ?>" required></div>
         <div class="field"><label for="<?= $p ?>_adv">Class adviser</label><select id="<?= $p ?>_adv" name="adviser_id"><?= opts($teachers, $v['adviser_id'] ?? '') ?></select></div>
     </div>
-    <p class="hint" style="margin: 10px 0 0;">A teacher advises one section per school year. Choosing a teacher who already advises another section moves them here.</p>
+        <p class="form-help-note">A teacher advises one section per school year. Choosing a teacher who already advises another section moves them here.</p>
 <?php }
 
 layout_start($user, 'reg_sections', 'Sections', 'Create sections, assign class advisers and see how many students are in each.');
 ?>
 
 <?php if ($unassigned): ?>
-<div class="notice notice-warn" style="margin-bottom: 20px;"><?= icon('bell') ?><span><strong><?= $unassigned ?> enrolled student<?= $unassigned === 1 ? ' has' : 's have' ?> no section yet.</strong> <a href="registrar_students.php?section=none" style="color: inherit; font-weight: 700;">Assign them on the Students page ›</a></span></div>
+<div class="notice notice-warn" style="margin-bottom: 20px;"><?= icon('bell') ?><span><strong><?= $unassigned ?> enrolled student<?= $unassigned === 1 ? ' has' : 's have' ?> no section yet.</strong> <a href="registrar_students.php?section=none" style="color: inherit; font-weight: 700;">Set their section with Edit on the Students page›</a></span></div>
 <?php endif; ?>
 
 <div class="card">
     <div class="card-head-flex">
-        <div><div class="card-title">Sections</div><div class="card-sub">Open a section's students to move learners in or out.</div></div>
+                <div><div class="card-title">Sections</div><div class="card-sub">Open a section to see the students in it.</div></div>
         <button type="button" class="btn btn-primary btn-sm" data-open="modalAddSection">+ Add section</button>
     </div>
     <?php if (!$sections): ?>
@@ -61,6 +66,7 @@ layout_start($user, 'reg_sections', 'Sections', 'Create sections, assign class a
                     <div class="case-card-meta" style="font-size: 0.82rem;">
                         Adviser: <?= $s['adv_first'] ? '<strong style="color:#0f172a">' . e($s['adv_first'] . ' ' . $s['adv_last']) . '</strong>' : '<span class="badge badge-amber">No adviser yet</span>' ?>
                     </div>
+            <?php if (!empty($s['strand'])): ?><div class="case-card-meta" style="font-size: 0.78rem;"><?= e(shs_strand_labels()[$s['strand']] ?? $s['strand']) ?></div><?php endif; ?>
                     <div class="case-card-foot">
                         <a class="card-link" href="registrar_students.php?section=<?= $sid ?>&amp;status=all">Students ›</a>
                         <button type="button" class="btn btn-soft btn-sm" data-open="sec-<?= $sid ?>">Edit</button>
@@ -98,5 +104,21 @@ layout_start($user, 'reg_sections', 'Sections', 'Create sections, assign class a
     </form>
 </div>
 <?php endforeach; ?>
+
+<script>
+// v1.4: show the track and strand dropdown only for Grades 11 and 12
+document.querySelectorAll('[data-grade-select]').forEach(function (grade) {
+    var form = grade.closest('form'), box = form.querySelector('[data-strand-field]'), strand = box.querySelector('select');
+    function sync() {
+        var shs = grade.value === '11' || grade.value === '12';
+        box.hidden = !shs;
+        strand.disabled = !shs;
+        strand.required = shs;
+        if (!shs) strand.value = '';
+    }
+    grade.addEventListener('change', sync);
+    sync();
+});
+</script>
 
 <?php layout_end(); ?>

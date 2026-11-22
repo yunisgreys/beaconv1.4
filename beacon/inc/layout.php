@@ -5,7 +5,7 @@ const NAV = [
     ['Administration',        'Parent registrations','admin_parents.php',      'admin_parents',     'users'],
     ['Administration',        'Student records',    'admin_students.php',      'admin_students',    'clipboard'],
     ['Registrar',             'Students',           'registrar_students.php',  'registrar_students', 'users'],
-    ['Registrar',             'Teachers',           'registrar_teachers.php',  'registrar_teachers', 'clipboard'],
+    ['Registrar',             'School Staff',       'registrar_teachers.php',  'registrar_teachers', 'clipboard'],
     ['Registrar',             'Sections',           'registrar_sections.php',  'registrar_sections', 'grid'],
     ['My Workspace',          'Teacher overview',   'user_overview.php',       'user_overview',     'grid'],
     ['My Workspace',          'Student lookup',     'student_search.php',      'student_search',    'search'],

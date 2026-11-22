@@ -24,6 +24,36 @@
     t.parentNode.insertBefore(w, t);
     w.appendChild(t);
   });
+  
+  // v1.4: filter forms marked data-auto-filter apply as soon as a dropdown changes,
+  // and a short pause after typing in a search box (no Filter button needed).
+  document.querySelectorAll('form[data-auto-filter]').forEach(function (f) {
+    var timer, key = 'beacon.autofilter.' + location.pathname;
+    function go(field) {
+      try { if (field && field.name) sessionStorage.setItem(key, field.name); } catch (err) {}
+      if (f.requestSubmit) f.requestSubmit(); else f.submit();
+    }
+    f.querySelectorAll('select').forEach(function (s) { s.addEventListener('change', function () { go(s); }); });
+    f.querySelectorAll('input[type=search], input[type=text]').forEach(function (inp) {
+      var last = inp.value;
+      inp.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () { if (inp.value !== last) go(inp); }, 600);
+      });
+      inp.addEventListener('search', function () { if (inp.value !== last) go(inp); });   // the little (x) clear button
+    });
+    f.querySelectorAll('button[type=submit]').forEach(function (b) { b.hidden = true; });
+    // Put the cursor back where it was after the page reloads
+    try {
+      var name = sessionStorage.getItem(key);
+      sessionStorage.removeItem(key);
+      var el = name && f.elements[name];
+      if (el && el.focus) {
+        el.focus();
+        if (el.setSelectionRange && /^(search|text)$/.test(el.type)) { var n = el.value.length; el.setSelectionRange(n, n); }
+      }
+    } catch (err) {}
+  });
 
   // Sidebar: hide/show on desktop, slide-in drawer on tablets and phones (v1.4)
   var drawerQuery = window.matchMedia('(max-width: 1024px)');

@@ -42,11 +42,10 @@ layout_start($user, 'students', 'Student records', 'Read-only list of enrolled s
         <div><div class="card-title">Students</div><div class="card-sub">Sorted by grade, section and last name. Every view of this list is recorded in the audit log.</div></div>
     </div>
 
-    <form class="filters" method="get" action="admin_students.php" style="margin-bottom: 16px;">
+    <form class="filters" method="get" action="admin_students.php" style="margin-bottom: 16px;" data-auto-filter>
         <div class="field" style="flex: 1; min-width: 240px;"><label for="f_q">Search</label><input id="f_q" type="search" name="q" value="<?= e($fQ) ?>" placeholder="Name, student ID or LRN"></div>
         <div class="field"><label for="f_grade">Grade</label><select id="f_grade" name="grade"><?= opts($gradeOpts, $fGrade) ?></select></div>
         <div class="field"><label for="f_status">Status</label><select id="f_status" name="status"><?= opts($statusOpts, $fStatus) ?></select></div>
-        <button class="btn btn-soft" type="submit">Filter</button>
         <?php if ($fQ !== '' || $fGrade !== '' || $fStatus !== 'enrolled'): ?><a class="card-link" href="admin_students.php" style="padding-bottom: 10px;">Clear</a><?php endif; ?>
     </form>
 

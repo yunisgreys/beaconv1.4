@@ -8,6 +8,43 @@
 const STUDENT_STATUSES = ['enrolled' => 'Enrolled', 'transferred' => 'Transferred', 'graduated' => 'Graduated', 'inactive' => 'Inactive'];
 const REG_PER_PAGE = 15;
 
+/** v1.4: Senior High School tracks and strands (Grades 11–12). code => label, grouped by track. */
+const SHS_STRANDS = [
+    'Academic Track' => [
+        'STEM'  => 'STEM – Science, Technology, Engineering and Mathematics',
+        'ABM'   => 'ABM – Accountancy, Business and Management',
+        'HUMSS' => 'HUMSS – Humanities and Social Sciences',
+        'GAS'   => 'GAS – General Academic Strand',
+    ],
+    'Technical-Vocational-Livelihood (TVL) Track' => [
+        'TVL-HE'  => 'TVL – Home Economics',
+        'TVL-ICT' => 'TVL – Information and Communications Technology',
+        'TVL-IA'  => 'TVL – Industrial Arts',
+        'TVL-AFA' => 'TVL – Agri-Fishery Arts',
+    ],
+    'Sports Track'          => ['SPORTS' => 'Sports'],
+    'Arts and Design Track' => ['ARTS'   => 'Arts and Design'],
+];
+const SHS_GRADES = [11, 12];
+
+/** Flat code => label list of every strand. */
+function shs_strand_labels(): array {
+    return array_merge(...array_values(SHS_STRANDS));
+}
+
+/** <option>s grouped by track, for the strand dropdown. */
+function shs_strand_options(?string $selected): string {
+    $html = '<option value="">Choose a track and strand…</option>';
+    foreach (SHS_STRANDS as $track => $strands) {
+        $html .= '<optgroup label="' . e($track) . '">';
+        foreach ($strands as $code => $label) {
+            $html .= '<option value="' . e($code) . '"' . ((string)$selected === $code ? ' selected' : '') . '>' . e($label) . '</option>';
+        }
+        $html .= '</optgroup>';
+    }
+    return $html;
+}
+
 function require_registrar(array $user, string $perm): void {
     if (!can($perm, $user)) throw new RuntimeException('Only the Registrar can do this.');
 }
@@ -19,7 +56,7 @@ function current_school_year(): string {
 /** All sections with adviser and head-count, for lists and dropdowns. */
 function registrar_sections(): array {
     return db_all(
-        "SELECT sec.id, sec.grade_level, sec.name, sec.school_year, sec.adviser_id,
+            "SELECT sec.id, sec.grade_level, sec.name, sec.school_year, sec.adviser_id, sec.strand,
                 u.first_name AS adv_first, u.last_name AS adv_last,
                 (SELECT COUNT(*) FROM students s WHERE s.section_id = sec.id AND s.status = 'enrolled') AS enrolled
            FROM sections sec LEFT JOIN users u ON u.id = sec.adviser_id
@@ -28,7 +65,7 @@ function registrar_sections(): array {
 }
 
 function section_label(array $s): string {
-    return 'Grade ' . $s['grade_level'] . ' – ' . $s['name'];
+    return 'Grade ' . $s['grade_level'] . ' – ' . $s['name'] . (!empty($s['strand']) ? ' (' . $s['strand'] . ')' : '');
 }
 
 /** id => "Grade 8 – Mabini" (current school year first). */
@@ -127,6 +164,8 @@ function registrar_update_student(array $user, int $id, array $in): ?string {
     if (!$old) return 'Student not found.';
     [$v, $err] = student_input($in, $id);
     if ($err) return $err;
+    // v1.4: the section can be set here only when the student has none yet; it is not changed from this page
+    if ($old['section_id'] !== null) $v['section_id'] = (int)$old['section_id'];
     $changed = changed_fields($old, $v);
     if (!$changed) return null;
     db_run('UPDATE students SET student_no = ?, lrn = ?, first_name = ?, middle_name = ?, last_name = ?, birthdate = ?, sex = ?, section_id = ?, address = ?,
@@ -286,21 +325,131 @@ function registrar_save_section(array $user, array $in, int $id = 0): array {
     if ($grade < 1 || $grade > 12)                         return [null, 'Grade level must be from 1 to 12.'];
     if ($name === '' || mb_strlen($name) > 60)             return [null, 'Please enter a section name (up to 60 characters).'];
     if (!preg_match('/^(\d{4})-(\d{4})$/', $year, $m) || (int)$m[2] !== (int)$m[1] + 1) return [null, 'School year must look like 2026-2027.'];
+        // v1.4: Grades 11–12 need a Senior High School track and strand; other grades have none
+    $strand = trim((string)($in['strand'] ?? ''));
+    if (in_array($grade, SHS_GRADES, true)) {
+        if (!isset(shs_strand_labels()[$strand])) return [null, 'Please choose the Senior High School track and strand for Grade ' . $grade . '.'];
+    } else {
+        $strand = '';
+    }
+    $strand = $strand !== '' ? $strand : null;
     if (db_value('SELECT 1 FROM sections WHERE grade_level = ? AND LOWER(name) = LOWER(?) AND school_year = ? AND id <> ?', [$grade, $name, $year, $id])) {
         return [null, "Grade $grade – $name already exists for $year."];
     }
     if ($id) {
-        $old = db_one('SELECT grade_level, name, school_year FROM sections WHERE id = ?', [$id]);
+        $old = db_one('SELECT grade_level, name, school_year, strand FROM sections WHERE id = ?', [$id]);
         if (!$old) return [null, 'Section not found.'];
-        $changed = changed_fields($old, ['grade_level' => $grade, 'name' => $name, 'school_year' => $year]);
+        $changed = changed_fields($old, ['grade_level' => $grade, 'name' => $name, 'school_year' => $year, 'strand' => $strand]);
         if ($changed) {
-            db_run('UPDATE sections SET grade_level = ?, name = ?, school_year = ? WHERE id = ?', [$grade, $name, $year, $id]);
+            db_run('UPDATE sections SET grade_level = ?, name = ?, school_year = ?, strand = ? WHERE id = ?', [$grade, $name, $year, $strand, $id]);
             audit('update', 'sections', $id, null, $changed, $user);
         }
         return [$id, null];
     }
-    db_run('INSERT INTO sections (grade_level, name, school_year) VALUES (?, ?, ?)', [$grade, $name, $year]);
+    db_run('INSERT INTO sections (grade_level, name, school_year, strand) VALUES (?, ?, ?, ?)', [$grade, $name, $year, $strand]);
     $newId = (int)db()->lastInsertId();
-    audit('create', 'sections', $newId, null, ['grade_level', 'name', 'school_year'], $user);
+    audit('create', 'sections', $newId, null, array_values(array_filter(['grade_level', 'name', 'school_year', $strand !== null ? 'strand' : null])), $user);
     return [$newId, null];
+}
+
+
+/* ---------------------- School staff (v1.4) ---------------------- */
+
+/** Staff the Registrar can record. The Super Admin then creates their sign-in account. */
+const STAFF_REGISTRY_ROLES  = ['teacher' => 'Teacher / Adviser', 'clinic' => 'Clinic Staff', 'guidance' => 'Guidance Staff', 'registrar' => 'Registrar Staff'];
+const STAFF_REGISTRY_STATUS = ['pending' => ['Waiting for account', 'amber'], 'created' => ['Account created', 'green'], 'cancelled' => ['Cancelled', 'gray']];
+
+/** Cleans and checks a staff record. Returns [clean array, error or null]. */
+function staff_registry_input(array $in, int $exceptId = 0): array {
+    $v = [
+        'role_code'   => trim((string)($in['role_code'] ?? '')),
+        'first_name'  => trim((string)($in['first_name'] ?? '')),
+        'last_name'   => trim((string)($in['last_name'] ?? '')),
+        'email'       => mb_strtolower(trim((string)($in['email'] ?? '')), 'UTF-8'),
+        'phone'       => trim((string)($in['phone'] ?? '')),
+        'title'       => trim((string)($in['title'] ?? '')),
+        'employee_no' => strtoupper(trim((string)($in['employee_no'] ?? ''))),
+    ];
+    $err = null;
+    if (!isset(STAFF_REGISTRY_ROLES[$v['role_code']]))                     $err = 'Please choose the staff role.';
+    elseif ($v['first_name'] === '' || $v['last_name'] === '')            $err = 'Please enter the first and last name.';
+    elseif (mb_strlen($v['first_name']) > 80 || mb_strlen($v['last_name']) > 80 || mb_strlen($v['title']) > 100) $err = 'One of the fields is too long.';
+    elseif (!filter_var($v['email'], FILTER_VALIDATE_EMAIL) || mb_strlen($v['email']) > 190) $err = 'Please enter a valid e-mail address. It becomes their sign-in e-mail.';
+    elseif (db_value('SELECT 1 FROM users WHERE LOWER(email) = ?', [$v['email']]))           $err = 'That e-mail already has a BEACON account.';
+    elseif (db_value("SELECT 1 FROM staff_registry WHERE email = ? AND status <> 'cancelled' AND id <> ?", [$v['email'], $exceptId])) $err = 'That staff member is already registered.';
+    elseif ($v['phone'] !== '' && !preg_match('/^\+?[0-9][0-9 ()-]{6,24}$/', $v['phone']))   $err = 'Please enter a valid phone number.';
+    elseif ($v['employee_no'] !== '' && !preg_match('/^[A-Z0-9][A-Z0-9-]{1,29}$/', $v['employee_no'])) $err = 'Employee number may use letters, numbers and dashes only.';
+    foreach (['phone', 'title', 'employee_no'] as $k) if ($v[$k] === '') $v[$k] = null;
+    return [$v, $err];
+}
+
+/** Records a new staff member; they wait for the Super Admin to create their account. Returns [id, error]. */
+function registrar_register_staff(array $user, array $in): array {
+    require_registrar($user, 'registrar.teachers.manage');
+    [$v, $err] = staff_registry_input($in);
+    if ($err) return [null, $err];
+    db_run("INSERT INTO staff_registry (role_code, first_name, last_name, email, phone, title, employee_no, status, registered_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
+        [$v['role_code'], $v['first_name'], $v['last_name'], $v['email'], $v['phone'], $v['title'], $v['employee_no'], $user['id'], now(), now()]);
+    $id = (int)db()->lastInsertId();
+    audit('create', 'staff_registry', $id, null, array_keys(array_filter($v, fn($x) => $x !== null)), $user);
+    return [$id, null];
+}
+
+/** Edits a staff record that is still waiting for its account. Returns null or an error. */
+function registrar_update_staff_entry(array $user, int $id, array $in): ?string {
+    require_registrar($user, 'registrar.teachers.manage');
+    $old = db_one('SELECT role_code, first_name, last_name, email, phone, title, employee_no, status FROM staff_registry WHERE id = ?', [$id]);
+    if (!$old) return 'Staff record not found.';
+    if ($old['status'] !== 'pending') return 'Only records still waiting for an account can be edited here.';
+    [$v, $err] = staff_registry_input($in, $id);
+    if ($err) return $err;
+    unset($old['status']);
+    $changed = changed_fields($old, $v);
+    if (!$changed) return null;
+    db_run('UPDATE staff_registry SET role_code = ?, first_name = ?, last_name = ?, email = ?, phone = ?, title = ?, employee_no = ?, updated_at = ? WHERE id = ?',
+        [$v['role_code'], $v['first_name'], $v['last_name'], $v['email'], $v['phone'], $v['title'], $v['employee_no'], now(), $id]);
+    audit('update', 'staff_registry', $id, null, $changed, $user);
+    return null;
+}
+
+/** Withdraws a staff record that has no account yet. Returns null or an error. */
+function registrar_cancel_staff_entry(array $user, int $id): ?string {
+    require_registrar($user, 'registrar.teachers.manage');
+    $row = db_one('SELECT status FROM staff_registry WHERE id = ?', [$id]);
+    if (!$row) return 'Staff record not found.';
+    if ($row['status'] !== 'pending') return 'Only records still waiting for an account can be cancelled.';
+    db_run("UPDATE staff_registry SET status = 'cancelled', updated_at = ? WHERE id = ?", [now(), $id]);
+    audit('update', 'staff_registry', $id, null, ['status'], $user);
+    return null;
+}
+
+/** One page of registered staff. Returns [rows, total]. */
+function staff_registry_page(string $q, string $role, string $status, int $page, int $perPage = REG_PER_PAGE): array {
+    $where = []; $params = [];
+    if ($q !== '') {
+        $like = '%' . mb_strtolower(addcslashes($q, '\\%_'), 'UTF-8') . '%';
+        $where[] = "(LOWER(sr.first_name) LIKE ? OR LOWER(sr.last_name) LIKE ? OR LOWER(sr.first_name || ' ' || sr.last_name) LIKE ? OR sr.email LIKE ? OR LOWER(COALESCE(sr.employee_no, '')) LIKE ?)";
+        array_push($params, $like, $like, $like, $like, $like);
+    }
+    if (isset(STAFF_REGISTRY_ROLES[$role]))    { $where[] = 'sr.role_code = ?'; $params[] = $role; }
+    if (isset(STAFF_REGISTRY_STATUS[$status])) { $where[] = 'sr.status = ?';    $params[] = $status; }
+    $sqlWhere = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+    $total = (int)db_value("SELECT COUNT(*) FROM staff_registry sr $sqlWhere", $params);
+    $rows = db_all(
+        "SELECT sr.*, rb.first_name AS by_first, rb.last_name AS by_last
+           FROM staff_registry sr LEFT JOIN users rb ON rb.id = sr.registered_by
+           $sqlWhere
+          ORDER BY (sr.status = 'pending') DESC, sr.created_at DESC
+          LIMIT " . max(1, $perPage) . " OFFSET " . max(0, ($page - 1) * $perPage),
+        $params
+    );
+    return [$rows, $total];
+}
+
+/** Staff waiting for the Super Admin to create their account, oldest first. */
+function pending_staff_registrations(): array {
+    return db_all("SELECT sr.*, rb.first_name AS by_first, rb.last_name AS by_last
+                     FROM staff_registry sr LEFT JOIN users rb ON rb.id = sr.registered_by
+                    WHERE sr.status = 'pending' ORDER BY sr.created_at");
 }
