@@ -16,10 +16,34 @@
     if (!document.querySelector('.modal-overlay.open')) document.body.style.overflow = '';
   }
 
+    // v1.4: wide tables scroll sideways inside their card on small screens
+  document.querySelectorAll('table.table').forEach(function (t) {
+    if (t.parentElement && t.parentElement.classList.contains('table-scroll')) return;
+    var w = document.createElement('div');
+    w.className = 'table-scroll';
+    t.parentNode.insertBefore(w, t);
+    w.appendChild(t);
+  });
+
+  // Sidebar: hide/show on desktop, slide-in drawer on tablets and phones (v1.4)
+  var drawerQuery = window.matchMedia('(max-width: 1024px)');
+  function setDrawer(open) {
+    document.documentElement.classList.toggle('sidebar-open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
   document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-sidebar-close]')) { setDrawer(false); return; }
+    if (drawerQuery.matches && e.target.closest('.shell2 .nav-link')) { setDrawer(false); return; }
     if (!e.target.closest('[data-sidebar-toggle]')) return;
+    if (drawerQuery.matches) { setDrawer(!document.documentElement.classList.contains('sidebar-open')); return; }
     var closed = document.documentElement.classList.toggle('sidebar-closed');
     try { localStorage.setItem('beacon.sidebar', closed ? 'closed' : 'open'); } catch (err) {}
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.documentElement.classList.contains('sidebar-open')) setDrawer(false);
+  });
+  (drawerQuery.addEventListener ? drawerQuery.addEventListener.bind(drawerQuery, 'change') : drawerQuery.addListener.bind(drawerQuery))(function (q) {
+    if (!q.matches) setDrawer(false);
   });
 
   document.addEventListener('click', function (e) {

@@ -42,6 +42,7 @@ function icon(string $name): string {
         'key'       => '<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2"/>',
         'logout'    => '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4"/>',
         'panel'     => '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M10 5v14"/>',
+        'x'         => '<path d="M6 6l12 12M18 6L6 18"/>',
     ];
     return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' . ($paths[$name] ?? '') . '</svg>';
 }
@@ -145,7 +146,8 @@ function layout_start($user, $activeKey, $title, $subtitle = '', array $opts = [
     <div class="system-analytics">
         <nav class="shell2" aria-label="Main">
             <div class="sidebar-top">
-                <img class="sidebar-wordmark" src="assets/img/logo-wordmark-white.svg" alt="BEACON">
+                 <img class="sidebar-wordmark" src="assets/img/logo-wordmark-white.svg" alt="BEACON">
+                <button type="button" class="sidebar-close" data-sidebar-close aria-label="Close menu"><?= icon('x') ?></button>
             </div>
 
             <div class="navigation">
@@ -173,7 +175,8 @@ function layout_start($user, $activeKey, $title, $subtitle = '', array $opts = [
                 <a class="sidebar-user-btn" href="change_password.php" title="Change password"><?= icon('key') ?></a>
                 <button type="button" class="sidebar-user-btn" data-open="modalLogout" title="Log out" aria-label="Log out" aria-haspopup="dialog"><?= icon('logout') ?></button>
             </div>
-        </nav>
+         </nav>
+        <div class="sidebar-backdrop" data-sidebar-close aria-hidden="true"></div>
 
         <div class="shell">
             <header class="header">

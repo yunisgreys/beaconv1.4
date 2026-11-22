@@ -5,7 +5,7 @@ $isLoggedIn = $currentUser !== null;
 $school = config('school_name') ?? 'Christ Life Academy';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="landing-html">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +15,9 @@ $school = config('school_name') ?? 'Christ Life Academy';
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
     <style>
         html { scroll-behavior: smooth; scroll-padding-top: 76px; }
-        body.landing { margin: 0; display: block; height: auto; min-height: 100vh; overflow-x: hidden; background: #f8fafc; color: #0f172a; font-family: 'DM Sans', system-ui, sans-serif; }
+                /* v1.4: index.css locks html/body for the portal; the landing page must scroll */
+        html.landing-html { height: auto; min-height: 100%; width: 100%; overflow-x: hidden; overflow-y: auto; }
+        body.landing { margin: 0; display: block; width: 100%; height: auto; min-height: 100vh; overflow: visible; background: #f8fafc; color: #0f172a; font-family: 'DM Sans', system-ui, sans-serif; }
 
         /* Top navigation */
         .landing-nav {
@@ -28,7 +30,7 @@ $school = config('school_name') ?? 'Christ Life Academy';
         .landing-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; min-width: 0; }
         .landing-brand img { height: 26px; width: auto; display: block; }
         .landing-brand-school { font-size: .66rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #1948A5; white-space: nowrap; padding-left: 12px; border-left: 1px solid #e2e8f0; }
-        .landing-links { display: flex; align-items: center; gap: 8px; }
+        .landing-links { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .landing-link { color: #334155; font-weight: 600; font-size: .875rem; text-decoration: none; padding: 9px 14px; border-radius: 10px; }
         .landing-link:hover { background: #f1f5f9; color: #0f172a; }
         .landing-links .btn { font-size: .8125rem; padding: 9px 16px; white-space: nowrap; }
@@ -36,7 +38,7 @@ $school = config('school_name') ?? 'Christ Life Academy';
         /* Hero: BEACON + school name only */
         .landing-hero {
             position: relative; overflow: hidden;
-            min-height: calc(100vh - 61px);
+            min-height: calc(100vh - 61px); min-height: calc(100svh - 61px);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 64px 24px 96px; text-align: center; color: #fff;
             background: linear-gradient(180deg, #082B70 0%, #5B84EB 38%, #1948A5 92%, #082B70 100%);
@@ -96,6 +98,13 @@ $school = config('school_name') ?? 'Christ Life Academy';
             .about { padding: 64px 18px 72px; }
             .about-grid { grid-template-columns: 1fr; }
             .landing-school { letter-spacing: .22em; text-indent: .22em; }
+            .landing-hero { padding: 48px 18px 88px; }
+        }
+        @media (max-width: 380px) {
+            .landing-brand img { height: 22px; }
+            .landing-links { gap: 4px; }
+            .landing-link { padding: 8px; font-size: .8rem; }
+            .landing-links .btn { padding: 8px 12px; }
         }
         @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .landing-scroll svg { animation: none; } }
     </style>

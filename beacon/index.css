@@ -15,9 +15,9 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'DM Sans', sans-serif; }
-html, body { background: var(--bg-shell); color: var(--text-main); height: 100vh; width: 100vw; overflow: hidden; }
+html, body { background: var(--bg-shell); color: var(--text-main); height: 100vh; width: 100%; overflow: hidden; }
 
-.system-analytics { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
+.system-analytics { display: flex; width: 100%; height: 100vh; overflow: hidden; }
 
 .shell2 { width: 248px; background: linear-gradient(180deg, #5B84EB 0%, #1948A5 55%, #100E6B 100%); color: #c7c9f5; display: flex; flex-direction: column; flex-shrink: 0; height: 100vh; }
 .sidebar-top { padding: 22px 18px 18px 22px; display: flex; align-items: center; justify-content: space-between; }
@@ -434,3 +434,102 @@ a.pager-btn:hover { border-color: #c7d2fe; background: #eef2ff; color: var(--btn
 .reg-bulk select { height: 36px; border: 1px solid var(--border); border-radius: 9px; padding: 0 10px; font: inherit; font-size: 0.84rem; background: #fff; }
 .form-section-label { grid-column: 1 / -1; font-size: 0.7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #64748b; margin: 6px 0 -4px; }
 .btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+
+/* ================================================================
+   v1.4 · Responsive layout (phones, tablets, laptops, big monitors)
+   ================================================================ */
+img, svg, video, canvas { max-width: 100%; }
+.stat-card-box, .field { max-width: 100%; }
+html, body, .system-analytics, .shell, .shell2 { height: 100dvh; }
+@supports not (height: 100dvh) { html, body, .system-analytics, .shell, .shell2 { height: 100vh; } }
+html, body { width: 100%; }
+.sidebar-backdrop { display: none; }
+.sidebar-close { display: none; }
+.shell > * { flex-shrink: 0; }   /* the header was being squashed on short screens */
+.card, .grid-main-side > *, .grid-2 > *, .stat-grid-3 > *, .stat-grid-4 > * { min-width: 0; }   /* grid children may shrink instead of pushing the page wider */
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Big monitors: give the content a little more room */
+@media (min-width: 1600px) { .main-content { max-width: 1520px; } }
+
+/* Tablets and phones: the sidebar becomes a slide-in drawer */
+@media (max-width: 1024px) {
+    .shell2 {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+        width: min(280px, 86vw); margin-left: 0 !important;
+        transform: translateX(-100%); visibility: hidden; transition: transform .22s ease, visibility 0s .22s;
+        view-transition-name: none;
+    }
+    .sidebar-open .shell2 { transform: none; visibility: visible; transition: transform .22s ease; box-shadow: 0 0 40px rgba(15,23,42,.35); }
+    .sidebar-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 55;
+        background: rgba(15,23,42,.45); opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+    .sidebar-close {
+        display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+        border: 0; border-radius: 8px; background: rgba(255,255,255,.12); color: #fff; cursor: pointer;
+    }
+    .sidebar-close .ico { width: 18px; height: 18px; }
+    .nav-link { padding: 11px 12px; }
+
+    .header { padding: 14px 20px; min-height: 64px; gap: 12px; }
+    .main-content { padding: 24px 20px; }
+    .flash { margin: 16px 20px 0; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .table th { white-space: nowrap; }
+    .stat-grid-3 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    .header-search { width: 220px; }
+}
+
+/* Phones */
+@media (max-width: 767px) {
+    .header { flex-wrap: wrap; padding: 12px 14px; min-height: 0; }
+    .header-left { flex: 1; min-width: 0; gap: 10px; }
+    .header-left > div { min-width: 0; }
+    .header-greeting { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-sub { font-size: .76rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .header-actions { gap: 8px; }
+    .header-icon-btn, .role-badge { flex-shrink: 0; }
+    .user-avatar-pill { display: none; }
+    .header-search { order: 3; flex-basis: 100%; width: 100%; }
+    .header-actions:has(.header-search) { flex-basis: 100%; flex-wrap: wrap; }
+
+    .main-content { padding: 16px 12px 28px; }
+    .flash { margin: 12px 12px 0; }
+    .card { padding: 18px 16px; border-radius: 14px; }
+    .card-head-flex { flex-wrap: wrap; gap: 12px; }
+    .hero-card { padding: 22px 20px; }
+    .hero-title { font-size: 1.35rem; }
+    .hero-btns { flex-wrap: wrap; }
+    .stat-grid-4 { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card-box { padding: 16px; gap: 12px; }
+    .stat-val { font-size: 1.4rem; }
+    .student-picker { grid-template-columns: 1fr; }
+
+    /* Inline grids written in the pages (filters, info tiles) */
+    [style*="grid-template-columns"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .filters { align-items: stretch; }
+    .filters > *, .filters .field { flex: 1 1 100%; min-width: 0 !important; }
+    [style*="min-width"] { min-width: 0 !important; }
+    [style*="max-width"] { max-width: 100% !important; }
+
+    /* Bigger touch targets; 16px inputs stop iPhones zooming in */
+    .field input, .field select, .field textarea, .header-search input { font-size: 16px; }
+    .btn { min-height: 40px; }
+    .row-actions { justify-content: flex-start; }
+
+    /* Modals fill the screen comfortably */
+    .modal-overlay { padding: 10px; align-items: flex-end; }
+    .modal-card, .modal-card.wide { max-width: 95vw; width: 100%; max-height: 90dvh; border-radius: 16px; }
+    .modal-head { padding: 18px 16px 14px; }
+    .modal-body { padding: 16px; }
+    .modal-foot { padding: 14px 16px 16px; flex-wrap: wrap; }
+    .modal-foot .btn { flex: 1 1 auto; }
+}
+
+@media (max-width: 420px) {
+    .stat-grid-4, [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+    .choice-row { grid-template-columns: 1fr 1fr; }
+}
