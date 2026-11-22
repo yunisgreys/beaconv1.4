@@ -137,8 +137,8 @@ layout_start($user, 'feed', 'Family feed', $child ? 'Notices from school and upd
         </div>
         <div class="modal-body">
             <div class="form-grid">
-                <div class="field"><label for="lk_no">Student ID</label><input id="lk_no" name="student_no" placeholder="SV-2026-0000" value="<?= e(post('student_no', '')) ?>"></div>
-                <div class="field"><label for="lk_bd">Child's birthdate</label><input id="lk_bd" type="date" name="birthdate" value="<?= e(post('birthdate', '')) ?>"></div>
+                <div class="field"><label for="lk_no">Student ID</label><input id="lk_no" name="student_no" placeholder="CLA-2026-0000" value="<?= e(post('student_no', '')) ?>"></div>
+                <div class="field"><label for="lk_bd">Child's Birthdate</label><input id="lk_bd" type="date" name="birthdate" value="<?= e(post('birthdate', '')) ?>"></div>
                 <div class="field span-2"><label for="lk_rel">Your relationship</label><select id="lk_rel" name="relationship"><?= opts(['' => 'Choose one'] + array_combine(PARENT_RELATIONSHIPS, PARENT_RELATIONSHIPS), post('relationship', '')) ?></select><span class="hint">Each student can have at most <?= MOTHER_LIMIT ?> Mother accounts.</span></div>
             </div>
         </div>
