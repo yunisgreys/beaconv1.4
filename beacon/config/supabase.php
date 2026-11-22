@@ -39,7 +39,7 @@ $env = static function (string ...$names): ?string {
 return [
     // The only value BEACON needs. Paste your Session pooler URI here.
     'database_url' => $env('DATABASE_URL', 'SUPABASE_DB_URL')
-        ?? 'postgresql://postgres.xlwgzpjxdqsqwtnjtzgf:[3erenity3wan]@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres',
+        ?? 'postgresql://postgres.xlwgzpjxdqsqwtnjtzgf:3erenity3wan@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres',
 
     // Optional: project URL and API keys (Project Settings → API).
     // BEACON doesn't need them today: every table is closed to the REST API

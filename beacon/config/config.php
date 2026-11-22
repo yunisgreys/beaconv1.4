@@ -15,7 +15,7 @@ return [
         'pass' => '',
     ],
 
-    'encryption_key' => '',
+    'encryption_key' => 'Bu6jECJOS/pzY77WNbwp8percKKWIMMdYQmI7sitRZc=',
 
     'session' => [
         'idle_timeout'     => 30 * 60,
